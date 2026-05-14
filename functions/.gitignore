@@ -1,0 +1,8 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Firebase
+.runtimeconfig.json
+lib/
+*.local
