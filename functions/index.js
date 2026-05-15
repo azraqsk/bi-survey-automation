@@ -57,7 +57,7 @@ exports.syncDotdigitalSurveys = onSchedule({
     // 3. Process Responses for Survey 16271 Since 48 hours ago to be safe with timezones
     const lookback = new Date();
     lookback.setHours(lookback.getHours() - 48);
-    const dateStr = lookback.toISOString(); // Full ISO 8601: YYYY-MM-DDThh:mm:ss.sssZ
+    const dateStr = lookback.toISOString().split('.')[0] + 'Z'; // YYYY-MM-DDTHH:mm:ssZ
 
     const endaBiEndpoint = 'https://api-bi.sitikhadijah.com/api/surveys';
     let totalSynced = 0;
@@ -66,7 +66,7 @@ exports.syncDotdigitalSurveys = onSchedule({
     try {
       const encodedDate = encodeURIComponent(dateStr);
       const responsesResponse = await axios.get(
-        `https://r3-api.dotdigital.com/v2/surveys/${targetSurveyId}/responses/activitysince/${encodedDate}`,
+        `https://r3-api.dotdigital.com/v2/surveys/${targetSurveyId}/responses/with-activity-since/${encodedDate}`,
         {
           headers: {
             'Authorization': ddAuthHeader
