@@ -32,7 +32,7 @@ The API performs the following checks:
 ## Deployment
 When deploying functions:
 ```bash
-firebase deploy --only functions --project enda-document-control-prod
+firebase deploy --only functions:syncDotdigitalSurveys --project enda-document-control-prod
 ```
 
 ### Setting Secrets
