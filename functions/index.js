@@ -50,18 +50,19 @@ exports.syncDotdigitalSurveys = onSchedule({
     const targetSurveyId = '16271';
     const targetSurveyName = 'Dotdigital NPS Survey'; // Placeholder name
 
-    // 3. Process Responses for Survey 16271 Since Yesterday
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const dateStr = yesterday.toISOString().split('T')[0];
+    // 3. Process Responses for Survey 16271 Since 48 hours ago to be safe with timezones
+    const lookback = new Date();
+    lookback.setHours(lookback.getHours() - 48);
+    const dateStr = lookback.toISOString(); // Full ISO 8601: YYYY-MM-DDThh:mm:ss.sssZ
 
     const endaBiEndpoint = 'https://api-bi.sitikhadijah.com/api/surveys';
     let totalSynced = 0;
 
-    console.log(`Fetching responses for survey ID: ${targetSurveyId} since ${dateStr}`);
+    console.log(`Fetching responses for survey ID: ${targetSurveyId} since ${dateStr} (UTC)`);
     try {
+      const encodedDate = encodeURIComponent(dateStr);
       const responsesResponse = await axios.get(
-        `https://r3-api.dotdigital.com/v2/surveys/${targetSurveyId}/responses/activitysince/${dateStr}`,
+        `https://r3-api.dotdigital.com/v2/surveys/${targetSurveyId}/responses/activitysince/${encodedDate}`,
         {
           headers: {
             'Authorization': ddAuthHeader
@@ -138,9 +139,9 @@ exports.syncDotdigitalSurveys = onSchedule({
       }
     } catch (err) {
       if (err.response && err.response.status === 404) {
-        console.log(`Survey ${targetSurveyId} might not have activitysince endpoint or no responses.`);
+        console.log(`Survey ${targetSurveyId}: No new activity since ${dateStr} or survey ID is invalid.`);
       } else {
-        console.error(`Error processing survey ID ${targetSurveyId}:`, err.response ? err.response.data : err.message);
+        console.error(`Error processing survey ID ${targetSurveyId}:`, err.response ? JSON.stringify(err.response.data) : err.message);
       }
     }
 
