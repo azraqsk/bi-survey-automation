@@ -42,7 +42,7 @@ exports.syncDotdigitalSurveys = onSchedule({
     );
     const idToken = authResponse.data.idToken;
 
-    // 2. We only need to target Survey ID 2885
+    // 2. We only need to target Survey ID 16271
     const ddUsername = DOTDIGITAL_API_USERNAME.value();
     const ddPassword = DOTDIGITAL_API_PASSWORD.value();
     const ddAuthHeader = `Basic ${Buffer.from(`${ddUsername}:${ddPassword}`).toString('base64')}`;
@@ -50,7 +50,7 @@ exports.syncDotdigitalSurveys = onSchedule({
     const targetSurveyId = '16271';
     const targetSurveyName = 'Dotdigital NPS Survey'; // Placeholder name
 
-    // 3. Process Responses for Survey 2885 Since Yesterday
+    // 3. Process Responses for Survey 16271 Since Yesterday
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const dateStr = yesterday.toISOString().split('T')[0];
