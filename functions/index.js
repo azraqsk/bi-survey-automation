@@ -50,6 +50,10 @@ exports.syncDotdigitalSurveys = onSchedule({
     const targetSurveyId = '16271';
     const targetSurveyName = 'Dotdigital NPS Survey'; // Placeholder name
 
+    // DEBUG: Verify secrets are loaded (Logging lengths only for security)
+    console.log(`Debug - DD_USER length: ${ddUsername ? ddUsername.length : 0}, DD_PASS length: ${ddPassword ? ddPassword.length : 0}`);
+    if (ddUsername) console.log(`Debug - DD_USER starts with: ${ddUsername.substring(0, 3)}...`);
+
     // 3. Process Responses for Survey 16271 Since 48 hours ago to be safe with timezones
     const lookback = new Date();
     lookback.setHours(lookback.getHours() - 48);
@@ -141,7 +145,12 @@ exports.syncDotdigitalSurveys = onSchedule({
       if (err.response && err.response.status === 404) {
         console.log(`Survey ${targetSurveyId}: No new activity since ${dateStr} or survey ID is invalid.`);
       } else {
-        console.error(`Error processing survey ID ${targetSurveyId}:`, err.response ? JSON.stringify(err.response.data) : err.message);
+        const errorData = err.response ? {
+          status: err.response.status,
+          data: err.response.data,
+          headers: err.response.headers
+        } : err.message;
+        console.error(`Error processing survey ID ${targetSurveyId}:`, JSON.stringify(errorData));
       }
     }
 
