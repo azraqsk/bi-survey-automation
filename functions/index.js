@@ -20,7 +20,8 @@ exports.syncDotdigitalSurveys = onSchedule({
     IDENTITY_API_KEY,
     BOT_EMAIL,
     BOT_PASSWORD
-  ]
+  ],
+  maxInstances: 1
 }, async (event) => {
   try {
     console.log("Starting daily Dotdigital survey sync...");
@@ -46,7 +47,7 @@ exports.syncDotdigitalSurveys = onSchedule({
     const ddPassword = DOTDIGITAL_API_PASSWORD.value();
     const ddAuthHeader = `Basic ${Buffer.from(`${ddUsername}:${ddPassword}`).toString('base64')}`;
 
-    const targetSurveyId = '2885';
+    const targetSurveyId = '16271';
     const targetSurveyName = 'Dotdigital NPS Survey'; // Placeholder name
 
     // 3. Process Responses for Survey 2885 Since Yesterday
@@ -73,20 +74,32 @@ exports.syncDotdigitalSurveys = onSchedule({
 
       // 4. Transform and Load to Enda BI
       for (const response of responses) {
-        
+
         // Extract rating from the specific question
         let ratingValue;
         const ratingQuestionSnippet = "On a scale of 0 to 10, how likely are you to recommend";
-        
+
         // Handle potential Dotdigital response structures (answers array vs flat object)
         if (response.answers && Array.isArray(response.answers)) {
-          const ans = response.answers.find(a => 
+          const ans = response.answers.find(a =>
             (a.question || a.questionText || "").includes(ratingQuestionSnippet)
           );
           if (ans) ratingValue = Number(ans.answer || ans.value || ans.answerText);
         } else {
           const key = Object.keys(response).find(k => k.includes(ratingQuestionSnippet));
           if (key) ratingValue = Number(response[key]);
+        }
+
+        // Attempt to extract email/phone for auto-identification
+        let emailValue, phoneValue;
+        if (response.answers && Array.isArray(response.answers)) {
+          const emailAns = response.answers.find(a => (a.questionText || a.question || "").toLowerCase().includes("email"));
+          const phoneAns = response.answers.find(a =>
+            (a.questionText || a.question || "").toLowerCase().includes("phone") ||
+            (a.questionText || a.question || "").toLowerCase().includes("mobile")
+          );
+          if (emailAns) emailValue = emailAns.answer || emailAns.value || emailAns.answerText;
+          if (phoneAns) phoneValue = phoneAns.answer || phoneAns.value || phoneAns.answerText;
         }
 
         const payload = {
@@ -96,22 +109,33 @@ exports.syncDotdigitalSurveys = onSchedule({
           data: {
             survey_id: targetSurveyId,
             survey_name: targetSurveyName,
+            email: emailValue || response.email || response.Email,
+            phone: phoneValue || response.phone || response.Phone || response.mobile,
             ...response
           }
         };
 
-          try {
-            await axios.post(endaBiEndpoint, payload, {
-              headers: {
-                'Authorization': `Bearer ${idToken}`,
-                'Content-Type': 'application/json'
-              }
-            });
-            totalSynced++;
-          } catch (postErr) {
-            console.error(`Failed to post response ${response.id} to Enda BI:`, postErr.response ? postErr.response.data : postErr.message);
+        try {
+          await axios.post(endaBiEndpoint, payload, {
+            headers: {
+              'Authorization': `Bearer ${idToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          totalSynced++;
+        } catch (postErr) {
+          const status = postErr.response ? postErr.response.status : null;
+          const data = postErr.response ? postErr.response.data : postErr.message;
+
+          if (status === 409) {
+            console.log(`Skipped response ${response.id}: Duplicate entry.`);
+          } else if (status === 403) {
+            console.error(`Forbidden error for response ${response.id}: Ensure BOT_EMAIL is verified in Firebase Auth.`, data);
+          } else {
+            console.error(`Failed to post response ${response.id} to Enda BI (Status: ${status}):`, data);
           }
         }
+      }
     } catch (err) {
       if (err.response && err.response.status === 404) {
         console.log(`Survey ${targetSurveyId} might not have activitysince endpoint or no responses.`);
